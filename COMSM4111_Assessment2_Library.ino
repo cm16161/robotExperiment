@@ -101,7 +101,6 @@ void calibrateSensors() {
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
   LineSensor.calibrate();
-  changeState( STATE_INITIAL );
 }
 
 void setup() {
@@ -197,6 +196,9 @@ void xMotionHandler(int diffOnX){
 }
 
 void moveToNextDestination(Coordinate tgt){
+
+  //dispatch methods here
+  
   int diffOnX = tgt.x - curr.x;
   int diffOnY = tgt.y - curr.y;
 
@@ -262,9 +264,7 @@ void decideStartUpFromButtons() {
   }
 
   if ( SERIAL_ACTIVE ) Serial.println("Erasing Map, activating Romi");
-
   Map.resetMap();
-
 }
 
 void beep() {
@@ -272,21 +272,6 @@ void beep() {
   delay(50);
   analogWrite(6, 0);
   delay(50);
-}
-
-void changeState( int which ) {
-  if ( which == STATE ) return;
-  L_Motor.setPower( 0 );
-  R_Motor.setPower( 0 );
-  behaviour_t = millis();
-  update_t = millis();
-  STATE = which;
-
-  L_PID.reset();
-  R_PID.reset();
-  H_PID.reset();
-
-  return;
 }
 
 void turnToTheta(float demand_angle) {
@@ -303,8 +288,7 @@ void turnToTheta(float demand_angle) {
     diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
   }
   
-  L_Motor.setPower(0);
-  R_Motor.setPower(0);
+  stopMotors();
   delay(10);
   RomiPose.update(e0_count, e1_count);
 }
