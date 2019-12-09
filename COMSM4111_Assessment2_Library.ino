@@ -274,17 +274,8 @@ void beep() {
   delay(50);
 }
 
-void reportUnknownState() {
-  if ( SERIAL_ACTIVE ) {
-    Serial.print("Unknown state: ");
-    Serial.println( STATE );
-  }
-}
-
 void changeState( int which ) {
-
   if ( which == STATE ) return;
-
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
   behaviour_t = millis();
