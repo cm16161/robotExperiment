@@ -112,7 +112,7 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
   
-  beep(); beep(); beep();
+  //beep(); beep(); beep();
   if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
 }
 
@@ -126,12 +126,8 @@ void loop() {
       Serial.print(", ");
       Serial.println(tgt.y);
       RomiPose.update(e0_count, e1_count);
-      rotateTo(tgt);
-      stopMotors();
-      delay(500);
-      beep();
-      delay(500);
-      goTo(tgt);
+      moveToNextDestination(tgt);      
+      curr = tgt;
       ff.addToVisited(tgt);
       Neighbours n = ff.getNeighbours(tgt);
       for (int i = 0; i < 4; i++) {
@@ -142,6 +138,61 @@ void loop() {
     }
   }
   delay(1);
+}
+
+void moveNSquares(int movement){
+  for (int i = 0; i < movement; i++){
+    moveForwards();
+    RomiPose.update(e0_count, e1_count);
+    delay(1000);
+  }
+}
+
+void yMotionHandler(int diffOnY){
+  if (diffOnY == 0) return;
+  Coordinate rotationCoord;
+  if (diffOnY < 0){
+    rotationCoord = Coordinate{curr.x, curr.y - 1};
+    //rotateTo(rotationCoord );
+    while (!turnToTheta(0)) {
+      RomiPose.update(e0_count, e1_count );
+    }
+  } else if (diffOnY > 0){
+    rotationCoord = Coordinate{curr.x, curr.y + 1};
+    while (!turnToTheta(PI)) {
+      RomiPose.update(e0_count, e1_count );
+    }
+  } 
+  stopMotors();
+  delay(500);
+  beep();
+  delay(500);
+  moveNSquares(abs(diffOnY));
+}
+
+void xMotionHandler(int diffOnX){
+  if (diffOnX == 0) return;
+  Coordinate rotationCoord;
+  if (diffOnX < 0){
+    rotationCoord = Coordinate{curr.x - 1, curr.y};
+    rotateTo(rotationCoord );
+  } else if (diffOnX > 0){
+    rotationCoord = Coordinate{curr.x + 1, curr.y};
+    rotateTo(rotationCoord );
+  } 
+  stopMotors();
+  delay(500);
+  beep();
+  delay(500);
+  moveNSquares(abs(diffOnX));
+}
+
+void moveToNextDestination(Coordinate tgt){
+  int diffOnX = tgt.x - curr.x;
+  int diffOnY = tgt.y - curr.y;
+
+  xMotionHandler(diffOnX);
+  yMotionHandler(diffOnY);  
 }
 
 void stopMotors() {
@@ -274,7 +325,7 @@ void decideStartUpFromButtons() {
 }
 
 void beep() {
-  analogWrite(6, 80);
+  analogWrite(6, 30);
   delay(50);
   analogWrite(6, 0);
   delay(50);
@@ -305,127 +356,23 @@ void changeState( int which ) {
 }
 
 void calibrateSensors() {
-
-  // Make sure motors are off so the robot
-  // stays still.
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
-
-
-  // Line sensor.
   LineSensor.calibrate();
-
-  // Other sensors..?
-
-  // After calibrating, we send the robot to
-  // its initial state.
   changeState( STATE_INITIAL );
 }
 
 bool turnToTheta(float demand_angle) {
-
-  //float demand_angle = 0;
-
-  // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
-  // Some crazy atan2 magic.
-  // Treats the difference in angle as cartesian x,y components.
-  // Cos and Sin are effectively wrapping the values between -1, +1, with a 90 degree phase.
-  // So we can pass in values larger than TWO_PI or less than -TWO_PI fine.
-  // atan2 returns -PI/+PI, giving us an indication of direction to turn.
-  //delay(10);
   float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-
-  // If we have got the Romi theta to roughly match
-  // the demand (by getting the difference to 0(ish)
-  // We transition out of this behaviour.
   if ( abs( diff ) < 0.03 ) {
-    changeState( STATE_INITIAL  );
     return true;
-
-  } else {    // else, turning behaviour
-
-    // Measurement is the different in angle, demand is 0
-    // bearing steers us to minimise difference toward 0
+  } else {
     float bearing = H_PID.update( 0, diff );
-
-    // Append to motor speed control
     float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
     float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );
-
-    // Set motor power.
+    
     L_Motor.setPower(l_pwr);
     R_Motor.setPower(r_pwr);
     return false;
-  } // end of abs(diff)<0.03 if()
-
-}// end of behaviour
-
-void turnToThetaPIOver2() {
-
-  float demand_angle = PI / 2;
-
-  // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
-  // Some crazy atan2 magic.
-  // Treats the difference in angle as cartesian x,y components.
-  // Cos and Sin are effectively wrapping the values between -1, +1, with a 90 degree phase.
-  // So we can pass in values larger than TWO_PI or less than -TWO_PI fine.
-  // atan2 returns -PI/+PI, giving us an indication of direction to turn.
-  float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-
-  // If we have got the Romi theta to roughly match
-  // the demand (by getting the difference to 0(ish)
-  // We transition out of this behaviour.
-  if ( abs( diff ) < 0.03 ) {
-    changeState( STATE_INITIAL  );
-
-  } else {    // else, turning behaviour
-
-    // Measurement is the different in angle, demand is 0
-    // bearing steers us to minimise difference toward 0
-    float bearing = H_PID.update( 0, diff );
-
-    // Append to motor speed control
-    float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
-    float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );
-
-    // Set motor power.
-    L_Motor.setPower(l_pwr);
-    R_Motor.setPower(r_pwr);
-
-  } // end of abs(diff)<0.03 if()
-}// end of behaviour
-
-void turnToThetaZero() {
-
-  float demand_angle = 0;
-
-  // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
-  // Some crazy atan2 magic.
-  // Treats the difference in angle as cartesian x,y components.
-  // Cos and Sin are effectively wrapping the values between -1, +1, with a 90 degree phase.
-  // So we can pass in values larger than TWO_PI or less than -TWO_PI fine.
-  // atan2 returns -PI/+PI, giving us an indication of direction to turn.
-  float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-
-  // If we have got the Romi theta to roughly match
-  // the demand (by getting the difference to 0(ish)
-  // We transition out of this behaviour.
-  if ( abs( diff ) < 0.03 ) {
-    changeState( STATE_INITIAL  );
-
-  } else {    // else, turning behaviour
-
-    // Measurement is the different in angle, demand is 0
-    // bearing steers us to minimise difference toward 0
-    float bearing = H_PID.update( 0, diff );
-
-    // Append to motor speed control
-    float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
-    float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );
-
-    // Set motor power.
-    L_Motor.setPower(l_pwr);
-    R_Motor.setPower(r_pwr);
-
-  } // end of abs(diff)<0.03 if()
-}// end of behaviour
+  } 
+}
