@@ -97,6 +97,13 @@ void initFloodFillState(){
   ff.addToStack(Coordinate{0, 0});
 }
 
+void calibrateSensors() {
+  L_Motor.setPower( 0 );
+  R_Motor.setPower( 0 );
+  LineSensor.calibrate();
+  changeState( STATE_INITIAL );
+}
+
 void setup() {
   pinMode( BUZZER_PIN, OUTPUT );
   pinMode(DEBUG_LED, OUTPUT );
@@ -291,22 +298,6 @@ void changeState( int which ) {
   return;
 }
 
-void calibrateSensors() {
-  L_Motor.setPower( 0 );
-  R_Motor.setPower( 0 );
-  LineSensor.calibrate();
-  changeState( STATE_INITIAL );
-}
-
-void turnToThetaRight(float demand_angle){
-  float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-  if (diff > 0.03){
-    turnToThetaRight(demand_angle);
-  } else if (diff < -0.03){
-    turnToThetaLeft(demand_angle);
-  }
-}
-
 void turnToTheta(float demand_angle) {
   float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
   int inflector = 1;
@@ -325,23 +316,4 @@ void turnToTheta(float demand_angle) {
   R_Motor.setPower(0);
   delay(10);
   RomiPose.update(e0_count, e1_count);
-}
-
-void turnToThetaLeft(float demand_angle) {
-  float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-  while (true){
-    if ( abs( diff ) < 0.03 ) {
-      return;
-    } else {
-      float bearing = H_PID.update( 0, diff );
-      float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
-      float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );      
-      L_Motor.setPower(l_pwr);
-      R_Motor.setPower(r_pwr);
-    } 
-    RomiPose.update(e0_count, e1_count);
-    delay(4);
-    Serial.println(diff);
-    diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-  }
 }
