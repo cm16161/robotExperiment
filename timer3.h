@@ -18,7 +18,6 @@ extern volatile long e1_count_prior;
 // This code has a dependency from the main code, using
 // the following global variables found there:
 extern volatile float l_speed_t3, r_speed_t3;
-
 // Routine to setupt timer3 to run 
 void setupTimer3() {
   
@@ -79,16 +78,15 @@ ISR( TIMER3_COMPA_vect ) {
   
   diff = e0_count - e0_count_prior;
   e0_count_prior = e0_count;
-  
+
   // Save speed to global variable.
-  l_speed_t3 = (float)diff;
-  
-  
-  diff = e1_count - e1_count_prior;
+  l_speed_t3 = (float)diff;  
+
+  long nextDiff;
+  nextDiff = e1_count - e1_count_prior;
   e1_count_prior = e1_count;
-  
   // Save speed to global variable.
-  r_speed_t3 = (float)diff;
+  r_speed_t3 = (float)nextDiff;
   
 }
 

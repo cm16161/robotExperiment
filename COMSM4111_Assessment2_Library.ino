@@ -27,6 +27,7 @@ u8 USB_SendSpace(u8 ep);
 #define M1_DIR          15
 #define M1_PWM          9
 
+
 #define L_SENSE_L       A4  // Line sensor pins
 #define L_SENSE_C       A3
 #define L_SENSE_R       A2
@@ -72,6 +73,8 @@ FloodFill ff;
 unsigned long update_t;   // Used for timing/flow control for main loop()
 unsigned long behaviour_t;// Use to track how long a behaviour has run.
 
+PID         ltSpeedPid( 0.05, 0, 0.0 );       // Speed control, left.
+PID         rtSpeedPid( 0.05, 0, 0.0 );       
 // used by timer3.h to calculate left and right wheel speed.
 volatile float l_speed_t3, r_speed_t3;
 
@@ -112,20 +115,29 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
   
-  //beep(); beep(); beep();
+  beep(); beep(); beep();
   if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
 }
 
+void printCoord(Coordinate tgt){
+  Serial.print("tgt: ");
+  Serial.print(tgt.x);
+  Serial.print(", ");
+  Serial.println(tgt.y);
+}
+
+void cleanEnvironment(){
+  while(1){
+    Serial.println("DONE");
+  }
+}
+
 void loop() {
-  while (!ff.isEmpty()) {
+  if (!ff.isEmpty()) {
     RomiPose.update( e0_count, e1_count );
     Coordinate tgt = ff.getCoordinate();
     if (!ff.visited(tgt)) {
-      Serial.print("tgt: ");
-      Serial.print(tgt.x);
-      Serial.print(", ");
-      Serial.println(tgt.y);
-      RomiPose.update(e0_count, e1_count);
+      printCoord(tgt);
       moveToNextDestination(tgt);      
       curr = tgt;
       ff.addToVisited(tgt);
@@ -136,8 +148,9 @@ void loop() {
         }
       }
     }
+  } else{
+    cleanEnvironment();
   }
-  delay(1);
 }
 
 void moveNSquares(int movement){
@@ -148,43 +161,32 @@ void moveNSquares(int movement){
   }
 }
 
-void yMotionHandler(int diffOnY){
-  if (diffOnY == 0) return;
-  Coordinate rotationCoord;
-  if (diffOnY < 0){
-    rotationCoord = Coordinate{curr.x, curr.y - 1};
-    //rotateTo(rotationCoord );
-    while (!turnToTheta(0)) {
-      RomiPose.update(e0_count, e1_count );
-    }
-  } else if (diffOnY > 0){
-    rotationCoord = Coordinate{curr.x, curr.y + 1};
-    while (!turnToTheta(PI)) {
-      RomiPose.update(e0_count, e1_count );
-    }
-  } 
+void motionTransition(int squaresToMove){
   stopMotors();
   delay(500);
   beep();
   delay(500);
-  moveNSquares(abs(diffOnY));
+  moveNSquares(abs(squaresToMove));
+}
+
+void yMotionHandler(int diffOnY){
+  if (diffOnY == 0) return;
+  if (diffOnY < 0){
+    turnToTheta(0);
+  } else if (diffOnY > 0){
+    turnToTheta(PI);
+  } 
+  motionTransition(diffOnY);
 }
 
 void xMotionHandler(int diffOnX){
   if (diffOnX == 0) return;
-  Coordinate rotationCoord;
   if (diffOnX < 0){
-    rotationCoord = Coordinate{curr.x - 1, curr.y};
-    rotateTo(rotationCoord );
+    turnToTheta((3*PI)/2);
   } else if (diffOnX > 0){
-    rotationCoord = Coordinate{curr.x + 1, curr.y};
-    rotateTo(rotationCoord );
-  } 
-  stopMotors();
-  delay(500);
-  beep();
-  delay(500);
-  moveNSquares(abs(diffOnX));
+    turnToTheta(PI/2);
+  }
+  motionTransition(diffOnX); 
 }
 
 void moveToNextDestination(Coordinate tgt){
@@ -201,89 +203,23 @@ void stopMotors() {
 }
 
 void moveForwards() {
-  L_Motor.setPower(20);
-  R_Motor.setPower(20);
+  int speedVal = 400;
+  int globalDist = e0_count + 600;
+  
+  while(e0_count < globalDist){
+    RomiPose.update(e0_count, e1_count);
+    delay(10);
+    int l_pwr = ltSpeedPid.update(speedVal+10, (int)l_speed_t3 );
+    int r_pwr = rtSpeedPid.update(speedVal, (int)r_speed_t3); 
+    L_Motor.setPower(l_pwr);
+    R_Motor.setPower(r_pwr);
+  }
+  
   delay(1000);
+  RomiPose.update(e0_count, e1_count);
   L_Motor.setPower(0);
   R_Motor.setPower(0);
 }
-
-void silentGoTo(Coordinate tgt)
-{
-  moveForwards();
-  curr = tgt;
-  RomiPose.update(e0_count, e1_count);
-  delay(1000);
-}
-
-void rotateTo(Coordinate tgt)
-{
-  int diff_x = curr.x - tgt.x;
-  int diff_y = curr.y - tgt.y;
-  float err = 0.1;
-  RomiPose.update(e0_count, e1_count);
-  if (abs(diff_x) > 1 || abs(diff_y) > 1 || abs(diff_y) + abs(diff_x) > 1) {
-    return;
-    while(1){
-      Serial.println("Finished Base");
-    }
-  }
-
-  if (diff_x < 0) {
-    Serial.println("Rotate to PI/2");
-    if (RomiPose.theta > PI / 2 + err || RomiPose.theta < PI / 2 - err)
-    {
-      while (!turnToTheta(PI / 2)) {
-        RomiPose.update(e0_count, e1_count );
-      }
-    }
-    stopMotors();
-    return;
-  }
-  else if (diff_x > 0) {
-    Serial.println("Rotate to 3PI/2");
-    if (RomiPose.theta > 3 * PI / 2 + err || RomiPose.theta < 3 * PI / 2 - err) {
-      while (!turnToTheta(3 * PI / 2)) {
-        RomiPose.update(e0_count, e1_count );
-      }
-    }
-    stopMotors();
-    return;
-  }
-
-  else if (diff_y < 0) {
-    //Rotate to PI
-    Serial.println("Rotate to PI");
-    if (RomiPose.theta > PI  + err || RomiPose.theta < PI - err)
-    {
-      while (!turnToTheta(PI)) {
-        RomiPose.update(e0_count, e1_count );
-      }
-    }
-    stopMotors();
-    return;
-
-  }
-  else if (diff_y > 0) {
-    //Rotate to 0
-    Serial.println("Rotate to 0");
-    if (RomiPose.theta >  err && RomiPose.theta <  2 * PI - err) {
-      while (!turnToTheta(0)) {
-        RomiPose.update(e0_count, e1_count );
-      }
-    }
-    stopMotors();
-    return;
-  }
-
-}
-void goTo(Coordinate tgt) {
-  moveForwards();
-  curr = tgt;
-  RomiPose.update(e0_count, e1_count);
-  delay(1000);
-}
-
 
 void decideStartUpFromButtons() {
   int mode = -1;
@@ -325,7 +261,7 @@ void decideStartUpFromButtons() {
 }
 
 void beep() {
-  analogWrite(6, 30);
+  analogWrite(6, 0);
   delay(50);
   analogWrite(6, 0);
   delay(50);
@@ -362,17 +298,21 @@ void calibrateSensors() {
   changeState( STATE_INITIAL );
 }
 
-bool turnToTheta(float demand_angle) {
+void turnToTheta(float demand_angle) {
   float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
-  if ( abs( diff ) < 0.03 ) {
-    return true;
-  } else {
-    float bearing = H_PID.update( 0, diff );
-    float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
-    float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );
-    
-    L_Motor.setPower(l_pwr);
-    R_Motor.setPower(r_pwr);
-    return false;
-  } 
+  float init = diff;
+  while (true){
+    if ( abs( diff ) < 0.01 ) {
+      return;
+    } else {
+      float bearing = H_PID.update( 0, diff );
+      float l_pwr = L_PID.update( (0 - bearing), l_speed_t3 );
+      float r_pwr = R_PID.update( (0 + bearing), r_speed_t3 );      
+      L_Motor.setPower(l_pwr);
+      R_Motor.setPower(r_pwr);
+    } 
+    RomiPose.update(e0_count, e1_count);
+    delay(4);
+    diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
+  }
 }
