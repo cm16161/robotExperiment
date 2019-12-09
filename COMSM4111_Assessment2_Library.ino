@@ -81,6 +81,7 @@ volatile float l_speed_t3, r_speed_t3;
 // Different states(behaviours) the robot
 // can be in.
 int STATE;
+int mode;
 Coordinate curr;
 
 #define STATE_CALIBRATE       0    // calibrates line sensor
@@ -92,9 +93,14 @@ Coordinate curr;
 #define STATE_TURN_TO_PIOVER2 6     // Turns so the robot faces theta = PI/2 (90*)
 #define STATE_AVOID_OBSTACLE  7
 
+#define REDUCED 1
+#define MANHATTAN 2
+#define BACKTRACK 3
+
 void initFloodFillState(){
   curr = {0, 0};
   ff.addToStack(Coordinate{0, 0});
+  mode = MANHATTAN;
 }
 
 void calibrateSensors() {
@@ -195,15 +201,37 @@ void xMotionHandler(int diffOnX){
   motionTransition(diffOnX); 
 }
 
-void moveToNextDestination(Coordinate tgt){
-
-  //dispatch methods here
-  
+void genericMotion(Coordinate tgt){
   int diffOnX = tgt.x - curr.x;
   int diffOnY = tgt.y - curr.y;
 
   xMotionHandler(diffOnX);
   yMotionHandler(diffOnY);  
+}
+
+void reducedMotion(Coordinate tgt){
+  int diff_x = curr.x - tgt.x;
+  int diff_y = curr.y - tgt.y;
+  if (abs(diff_x) > 1 || abs(diff_y) > 1 || abs(diff_y) + abs(diff_x) > 1) {
+    while(1){Serial.println("Stuck on corner"); 
+  }
+  genericMotion(tgt);
+}
+
+void backtrack(tgt){
+  Serial.println("Under Construction");
+}
+
+void moveToNextDestination(Coordinate tgt){
+  if (mode == REDUCED){
+    reducedMotion(tgt);
+  } else if (mode == MANHATTAN){
+    genericMotion(tgt);
+  } else if (mode == BACKTRACK){
+    backtrack(tgt);
+  } else{
+    Serial.println("Error State");
+  }
 }
 
 void stopMotors() {
