@@ -160,24 +160,48 @@ void cleanEnvironment(){
   }
 }
 
+bool mapObstacles(Coordinate current){
+//  if (current.x == 1 && current.y == 1){
+//    return true;
+//  }
+//  if (current.x == 1 && current.y == 2){
+//    return true;
+//  }
+//  if (current.x == 1 && current.y == 3){
+//    return true;
+//  }
+//  if (current.x == 1 && current.y == 4){
+//    return true;
+//  }
+  return false;
+}
+
+bool immediateObstacleFromIR(){
+  return mapObstacles(curr);
+}
+
 void loop() {
+  ff.addToVisited(Coordinate{1, 1});
+  ff.addToVisited(Coordinate{1, 2});
+  ff.addToVisited(Coordinate{1, 3});
+  ff.addToVisited(Coordinate{1, 4});
   if (!ff.isEmpty()) {
     RomiPose.update( e0_count, e1_count );
     Coordinate tgt = ff.getCoordinate();
     if (!ff.visited(tgt)) {
-      printCoord(tgt);
-      delay(1500);
       moveToNextDestination(tgt);      
-      curr = tgt;
       ff.addToVisited(tgt);
-      ff.addPathNumeration(tgt, pathNumeration);
-      pathNumeration += 1;
-      Neighbours n = ff.getNeighbours(tgt);
-      for (int i = 0; i < 4; i++) {
-        if (ff.validateCoordinate(n.neighbours[i])) {
-          ff.addToStack(n.neighbours[i]);
-        }
-      }
+      curr = tgt;
+      if (!immediateObstacleFromIR()){             
+        ff.addPathNumeration(tgt, pathNumeration);
+        pathNumeration += 1;
+        Neighbours n = ff.getNeighbours(tgt);
+        for (int i = 0; i < 4; i++) {
+          if (ff.validateCoordinate(n.neighbours[i])) {
+            ff.addToStack(n.neighbours[i]);
+          }
+        }        
+      } 
     }
   } else{
     cleanEnvironment();
@@ -221,7 +245,6 @@ void xMotionHandler(int diffOnX){
 }
 
 void genericMotion(Coordinate tgt){
-  return;
   
   int diffOnX = tgt.x - curr.x;
   int diffOnY = tgt.y - curr.y;
