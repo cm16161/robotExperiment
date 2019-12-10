@@ -27,7 +27,6 @@ u8 USB_SendSpace(u8 ep);
 #define M1_DIR          15
 #define M1_PWM          9
 
-
 #define L_SENSE_L       A4  // Line sensor pins
 #define L_SENSE_C       A3
 #define L_SENSE_R       A2
