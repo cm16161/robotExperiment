@@ -104,10 +104,18 @@ void initFloodFillState(){
   pathNumeration = 0;
 }
 
+void simulateObjects(){
+  ff.addToVisited(Coordinate{1, 1});
+  ff.addToVisited(Coordinate{1, 2});
+  ff.addToVisited(Coordinate{1, 3});
+  ff.addToVisited(Coordinate{1, 4});
+}
+
 void calibrateSensors() {
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
   LineSensor.calibrate();
+  simulateObjects();
 }
 
 void setup() {
@@ -153,10 +161,6 @@ void cleanEnvironment(){
 }
 
 void loop() {
-  ff.addToVisited(Coordinate{1, 1});
-  ff.addToVisited(Coordinate{1, 2});
-  ff.addToVisited(Coordinate{1, 3});
-  ff.addToVisited(Coordinate{1, 4});
   if (!ff.isEmpty()) {
     RomiPose.update( e0_count, e1_count );
     Coordinate tgt = ff.getCoordinate();
@@ -251,7 +255,7 @@ void backTrack(Coordinate tgt, int nextStepIndex)
   }
   genericMotion(potentialTarget);
   curr = potentialTarget;
-  backTrack(tgt,nextStepIndex - 1); //next one over: -1 for neighbouring sqaure, -1 again for next by next counting
+  backTrack(tgt,nextStepIndex - 1); 
 }
 
 void moveToNextDestination(Coordinate tgt){
@@ -260,7 +264,7 @@ void moveToNextDestination(Coordinate tgt){
   } else if (mode == MANHATTAN){
     genericMotion(tgt);
   } else if (mode == BACKTRACK){
-    backTrack(tgt, pathNumeration - 2);
+    backTrack(tgt, pathNumeration - 2); //next one over: -1 for neighbouring sqaure, -1 again for next by next counting
   } else{
     Serial.println("Error State");
   }
