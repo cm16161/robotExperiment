@@ -102,6 +102,7 @@ void initFloodFillState(){
   ff.addToStack(Coordinate{0, 0});
   mode = BACKTRACK;
   pathNumeration = 0;
+  simulateObjects();
 }
 
 void simulateObjects(){
@@ -115,7 +116,6 @@ void calibrateSensors() {
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
   LineSensor.calibrate();
-  simulateObjects();
 }
 
 void setup() {
@@ -181,10 +181,6 @@ bool immediateObstacleFromIR(){
 }
 
 void loop() {
-  ff.addToVisited(Coordinate{1, 1});
-  ff.addToVisited(Coordinate{1, 2});
-  ff.addToVisited(Coordinate{1, 3});
-  ff.addToVisited(Coordinate{1, 4});
   if (!ff.isEmpty()) {
     RomiPose.update( e0_count, e1_count );
     Coordinate tgt = ff.getCoordinate();
