@@ -77,7 +77,7 @@ PID         ltSpeedPid( 0.05, 0, 0.0 );       // Speed control, left.
 PID         rtSpeedPid( 0.05, 0, 0.0 );       
 // used by timer3.h to calculate left and right wheel speed.
 volatile float l_speed_t3, r_speed_t3;
-
+int pathNumeration;
 // Different states(behaviours) the robot
 // can be in.
 int STATE;
@@ -100,7 +100,8 @@ Coordinate curr;
 void initFloodFillState(){
   curr = {0, 0};
   ff.addToStack(Coordinate{0, 0});
-  mode = MANHATTAN;
+  mode = BACKTRACK;
+  pathNumeration = 0;
 }
 
 void calibrateSensors() {
@@ -138,21 +139,35 @@ void printCoord(Coordinate tgt){
   Serial.println(tgt.y);
 }
 
+void beep() {
+  analogWrite(6, 0);
+  delay(50);
+  analogWrite(6, 0);
+  delay(50);
+}
+
 void cleanEnvironment(){
   while(1){
-    Serial.println("DONE");
+    //Serial.println("DONE");
   }
 }
 
 void loop() {
+  ff.addToVisited(Coordinate{1, 1});
+  ff.addToVisited(Coordinate{1, 2});
+  ff.addToVisited(Coordinate{1, 3});
+  ff.addToVisited(Coordinate{1, 4});
   if (!ff.isEmpty()) {
     RomiPose.update( e0_count, e1_count );
     Coordinate tgt = ff.getCoordinate();
     if (!ff.visited(tgt)) {
       printCoord(tgt);
+      delay(1500);
       moveToNextDestination(tgt);      
       curr = tgt;
       ff.addToVisited(tgt);
+      ff.addPathNumeration(tgt, pathNumeration);
+      pathNumeration += 1;
       Neighbours n = ff.getNeighbours(tgt);
       for (int i = 0; i < 4; i++) {
         if (ff.validateCoordinate(n.neighbours[i])) {
@@ -202,6 +217,8 @@ void xMotionHandler(int diffOnX){
 }
 
 void genericMotion(Coordinate tgt){
+  return;
+  
   int diffOnX = tgt.x - curr.x;
   int diffOnY = tgt.y - curr.y;
 
@@ -213,13 +230,28 @@ void reducedMotion(Coordinate tgt){
   int diff_x = curr.x - tgt.x;
   int diff_y = curr.y - tgt.y;
   if (abs(diff_x) > 1 || abs(diff_y) > 1 || abs(diff_y) + abs(diff_x) > 1) {
-    while(1){Serial.println("Stuck on corner"); 
+    while(1){Serial.println("Stuck on corner");}
   }
   genericMotion(tgt);
 }
 
-void backtrack(tgt){
-  Serial.println("Under Construction");
+void backTrack(Coordinate tgt, int nextStepIndex)
+{
+  if (tgt.x == curr.x && tgt.y == curr.y) return;
+  Coordinate potentialTarget;
+  Neighbours n = ff.getNeighbours(curr);
+  for (auto i : n.neighbours) {
+    if (i.x >= ROOT_MAX || i.x < 0 || i.y >= ROOT_MAX || i.y < 0){continue;}
+    if (i.x == tgt.x && i.y == tgt.y) {
+      genericMotion(tgt);
+      return;
+    } else if (ff.getPathNumeration(i) == nextStepIndex) {
+      potentialTarget = i;
+    }
+  }
+  genericMotion(potentialTarget);
+  curr = potentialTarget;
+  backTrack(tgt,nextStepIndex - 1); //next one over: -1 for neighbouring sqaure, -1 again for next by next counting
 }
 
 void moveToNextDestination(Coordinate tgt){
@@ -228,7 +260,7 @@ void moveToNextDestination(Coordinate tgt){
   } else if (mode == MANHATTAN){
     genericMotion(tgt);
   } else if (mode == BACKTRACK){
-    backtrack(tgt);
+    backTrack(tgt, pathNumeration - 2);
   } else{
     Serial.println("Error State");
   }
@@ -295,13 +327,6 @@ void decideStartUpFromButtons() {
   Map.resetMap();
 }
 
-void beep() {
-  analogWrite(6, 0);
-  delay(50);
-  analogWrite(6, 0);
-  delay(50);
-}
-
 void turnToTheta(float demand_angle) {
   float diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
   int inflector = 1;
@@ -315,7 +340,6 @@ void turnToTheta(float demand_angle) {
     delay(10);
     diff = atan2( sin( ( demand_angle - RomiPose.theta) ), cos( (demand_angle - RomiPose.theta) ) );
   }
-  
   stopMotors();
   delay(10);
   RomiPose.update(e0_count, e1_count);

@@ -16,11 +16,14 @@ class FloodFill {
       for (int i = 0; i < MAX_SIZE; i++) {
         m_visited[i] = false;
         m_added[i] = false;
+        m_ordering[i] = -1;
       }
     }
 
     bool m_visited[MAX_SIZE];
     bool m_added[MAX_SIZE];
+    int m_ordering[MAX_SIZE];
+    
     Stack& m_stack = Stack::getInstance();
 
     Neighbours getNeighbours(Coordinate c);
@@ -30,6 +33,8 @@ class FloodFill {
     Coordinate getCoordinate();
     Goto rotateTo(Coordinate src, Coordinate dst);
     bool visited(Coordinate c); // Use Hash Function: index = 25x+y
+    void addPathNumeration(Coordinate c, int index); // Use Hash Function: index = 25x+y
+    int getPathNumeration(Coordinate c); // Use Hash Function: index = 25x+y
     bool onStack(Coordinate c);
     void addToVisited(Coordinate c); // Use Hash Function: index = 25x+y
     void addToAdded(Coordinate c);
@@ -67,6 +72,14 @@ Coordinate FloodFill::getCoordinate() {
 Goto FloodFill::rotateTo(Coordinate src, Coordinate dst) {
   //TODO
   return Goto{0, 0};
+}
+
+void FloodFill::addPathNumeration(Coordinate c, int order) {
+  m_ordering[ROOT_MAX*c.x + c.y] = order;
+}
+
+int FloodFill::getPathNumeration(Coordinate c){
+  return m_ordering[ROOT_MAX*c.x + c.y];
 }
 
 bool FloodFill::visited(Coordinate c) {
