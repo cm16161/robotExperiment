@@ -17,11 +17,13 @@ class FloodFill {
         m_visited[i] = false;
         m_added[i] = false;
         m_ordering[i] = -1;
+//        i_added=i_visited=0;
       }
     }
 
     bool m_visited[MAX_SIZE];
     bool m_added[MAX_SIZE];
+//    int i_visited, i_added;
     int m_ordering[MAX_SIZE];
     
     Stack& m_stack = Stack::getInstance();
@@ -83,19 +85,23 @@ int FloodFill::getPathNumeration(Coordinate c){
 }
 
 bool FloodFill::visited(Coordinate c) {
+//  return (i_visited & (1 <<(ROOT_MAX*c.x +c.y)));
   return m_visited[ROOT_MAX*c.x + c.y];
 }
 
 bool FloodFill::onStack(Coordinate c) {
+//  return i_added & (1 <<(ROOT_MAX*c.x +c.y));
   return m_added[ROOT_MAX * c.x + c.y];
 }
 
 void FloodFill::addToVisited(Coordinate c) {
   m_visited[ROOT_MAX * c.x + c.y] = true;
+//  i_visited = i_visited |  (1 << (ROOT_MAX*c.x + c.y));
 }
 
 void FloodFill::addToAdded(Coordinate c) {
   m_added[ROOT_MAX * c.x + c.y] = true;
+//  i_added = i_added |  (1 << (ROOT_MAX*c.x + c.y));
 }
 
 bool FloodFill::isEmpty() {
