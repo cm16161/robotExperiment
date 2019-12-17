@@ -295,7 +295,7 @@ void stopMotors() {
 
 void moveForwards() {
   int speedVal = 400;
-  unsigned long globalDist = e0_count + 600;
+  unsigned long globalDist = e0_count + 30;
   
   while(e0_count < globalDist){
     RomiPose.update(e0_count, e1_count);
