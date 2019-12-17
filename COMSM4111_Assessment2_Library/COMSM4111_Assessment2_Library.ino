@@ -105,10 +105,10 @@ void initFloodFillState(){
 }
 
 void simulateObjects(){
-  ff.addToVisited(Coordinate{1, 1});
-  ff.addToVisited(Coordinate{1, 2});
-  ff.addToVisited(Coordinate{1, 3});
-  ff.addToVisited(Coordinate{1, 4});
+//  ff.addToVisited(Coordinate{1, 1});
+//  ff.addToVisited(Coordinate{1, 2});
+//  ff.addToVisited(Coordinate{1, 3});
+//  ff.addToVisited(Coordinate{1, 4});
 }
 
 void calibrateSensors() {
@@ -295,7 +295,7 @@ void stopMotors() {
 
 void moveForwards() {
   int speedVal = 400;
-  int globalDist = e0_count + 600;
+  unsigned long globalDist = e0_count + 600;
   
   while(e0_count < globalDist){
     RomiPose.update(e0_count, e1_count);
